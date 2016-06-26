@@ -10,10 +10,11 @@ var transporter = nodemailer.createTransport(process.env.SMTPACCT);
 
 var debug = 0; // 0 none  1 some  2 more
 var create = true; // optionally don't create data for debugging
+var email = true; // email, or stdout
 //var config = { loginUrl:process.env.SF_URL, logLevel: "DEBUG" };
-var added = { Account: 0, Contact: 0, Opportunity: 0 };
 var config = { loginUrl:process.env.SF_URL };
 var conn = new sf.Connection(config);
+var added = { Account: 0, Contact: 0, Opportunity: 0 };
 
 var yesterday = (function(d){d.setDate(d.getDate()-1); return d})(new Date);
 var date = ("0" + yesterday.getDate()).slice(-2) + '/' + ("0" + (yesterday.getMonth()+1)).slice(-2) + '/' + yesterday.getFullYear(); // 25/06/2016
@@ -54,7 +55,7 @@ child_process.exec(wget1, function (err, stdout, stderr) {
           var opportunity = {};
           opportunity.Name = result['TRANSACTION NUMBER'];
           opportunity.StageName = 'Closed Won';
-          opportunity.Type = result['PAYMENT METHOD'];
+          opportunity.canh__Payment_Method__c = result['PAYMENT METHOD'];
           opportunity.Amount = result['AMOUNT'];
           opportunity.CloseDate = result['DONATION DATE'];
           opportunity.canh__Fee__c = result['FEE'];
@@ -114,5 +115,10 @@ function output(text) {
     text: report,
     html: report
   };
-  transporter.sendMail(mailOptions, function(err, info) { if (err) { console.log(err); } });
+  if (email === true) {
+    transporter.sendMail(mailOptions, function(err, info) { if (err) { console.log(err); } });
+  }
+  else {
+    console.log(report);
+  }
 }
