@@ -17,6 +17,7 @@
     "async": "^2.0.0-rc.6",
     "csvtojson": "^1.0.0",
     "dotenv": "^2.0.0",
-    "jsforce": "^1.6.5"
+    "jsforce": "^1.6.5",
+    "nodemailer": "^2.2.0"
   }
 }

@@ -5,6 +5,8 @@ var sf = require('jsforce');
 var Converter = require('csvtojson').Converter;
 var converter = new Converter({});
 var child_process = require('child_process');
+var nodemailer = require('nodemailer');
+var transporter = nodemailer.createTransport(process.env.SMTPACCT);
 
 //var config = { loginUrl:process.env.SF_URL, logLevel: "DEBUG" };
 var added = { Account: 0, Contact: 0, Opportunity: 0 };
@@ -70,9 +72,20 @@ child_process.exec(wget1, function (err, stdout, stderr) {
           asyncTasks.push(function(callback) { createData("Opportunity", "Name", opportunity, callback); });
         });
         async.series(asyncTasks, function(){
-          console.log("New Accounts:      " + added.Account + "\n" +
-                      "New Contacts:      " + added.Contact + "\n" +
-                      "New Opportunities: " + added.Opportunity);
+          var report = "<pre>\n" +
+                       "Import for date:   " + date + "\n" +
+                       "New Accounts:      " + added.Account + "\n" +
+                       "New Contacts:      " + added.Contact + "\n" +
+                       "New Opportunities: " + added.Opportunity + "\n" +
+                       "</pre>";
+          var mailOptions = {
+            from: '"Ten Oaks Tool" <noreply@tenoaksproject.org>',
+            to: "timpark@gmail.com",
+            subject: 'Re: Ten Oaks Import',
+            text: report,
+            html: report
+          };
+          transporter.sendMail(mailOptions, function(err, info) { if (err) { console.log(err); } });
         });
       });
     });
