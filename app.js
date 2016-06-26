@@ -8,6 +8,8 @@ var child_process = require('child_process');
 var nodemailer = require('nodemailer');
 var transporter = nodemailer.createTransport(process.env.SMTPACCT);
 
+var debug = 0; // 0 none  1 some  2 more
+var create = true; // optionally don't create data for debugging
 //var config = { loginUrl:process.env.SF_URL, logLevel: "DEBUG" };
 var added = { Account: 0, Contact: 0, Opportunity: 0 };
 var config = { loginUrl:process.env.SF_URL };
@@ -20,13 +22,13 @@ var wget1 = "wget --keep-session-cookies --save-cookies cookies.txt --post-data 
 var wget2 = "wget --keep-session-cookies --load-cookies cookies.txt --post-data '__VIEWSTATE=" + process.env.CH_VIEWSTATE2 + "&ctl00$bodyContentContainer$txtFromDate=" + date + "&ctl00$bodyContentContainer$txtToDate=" + date + "&ctl00$bodyContentContainer$btnDownloadData.x=20&ctl00$bodyContentContainer$btnDownloadData.y=13' " + process.env.CH_URL + "/en/Admin/MCDonations_DataDownload.aspx -O CharityDataDownload.csv";
 
 child_process.exec(wget1, function (err, stdout, stderr) {
-  if (err) { return console.err(err); }
+  if (err) { return output(err); }
   child_process.exec(wget2, function (err, stdout, stderr) {
-    if (err) { return console.err(err); }
-    converter.fromFile("./CharityDataDownload.csv", function(err,results) {
-      if (err) { return console.error(err); }
+    if (err) { return output(err); }
+    converter.fromFile("./CharityDataDownload.csv", function(err, results) {
+      if (err) { return output(err); }
       conn.login(process.env.SF_USERNAME, process.env.SF_PASSWORD + process.env.SF_ACCESS_TOKEN, function(err, user) {
-        if (err) { return console.error(err); }
+        if (err) { return output(err); }
         var asyncTasks = [];
         results.forEach(function(result) {
           var account = { Name:'General' };
@@ -62,30 +64,22 @@ child_process.exec(wget1, function (err, stdout, stderr) {
           opportunity.Description = result['MESSAGE TO CHARITY'];
           opportunity.canh__Donation_Source__c = result['DONATION SOURCE'];
 
-          //console.log("-----------------------");
-          //console.log(account);
-          //console.log(contact);
-          //console.log(opportunity);
+          if (debug > 1) {
+            console.log("-----------------------");
+            console.log(account);
+            console.log(contact);
+            console.log(opportunity);
+          }
 
           asyncTasks.push(function(callback) { createData("Account", "Name", account, callback); });
           asyncTasks.push(function(callback) { createData("Contact", "Email", contact, callback); });
           asyncTasks.push(function(callback) { createData("Opportunity", "Name", opportunity, callback); });
         });
         async.series(asyncTasks, function(){
-          var report = "<pre>\n" +
-                       "New Accounts:      " + added.Account + "\n" +
-                       "New Contacts:      " + added.Contact + "\n" +
-                       "New Opportunities: " + added.Opportunity + "\n" +
-                       "Import for date:   " + date + "\n" +
-                       "</pre>";
-          var mailOptions = {
-            from: '"Ten Oaks Tool" <noreply@tenoaksproject.org>',
-            to: process.env.REPORTTO,
-            subject: 'Re: Ten Oaks Import',
-            text: report,
-            html: report
-          };
-          transporter.sendMail(mailOptions, function(err, info) { if (err) { console.log(err); } });
+          var text = "New Accounts:      " + added.Account + "\n" +
+                     "New Contacts:      " + added.Contact + "\n" +
+                     "New Opportunities: " + added.Opportunity;
+          output(text);
         });
       });
     });
@@ -97,15 +91,28 @@ function capitalizeFirstLetter(string) {
 }
 
 function createData(table, unique, data, callback) {
-  console.log(data[unique]);
+  if (debug > 0) { console.log(data[unique]); }
   conn.query("SELECT " + unique + " FROM " + table + " WHERE " + unique + " = '" + data[unique] + "'", function(err, result) {
-    if (err) { callback(); return console.error(err); }
-    if (result.totalSize > 0) { callback(); return; }
+    if (err) { callback(); return output(err); }
+    if (result.totalSize > 0 || create === false) { callback(); return; }
     conn.sobject(table).create(data, function(err, ret) {
-      if (err || !ret.success) { callback(); return console.error(err, ret); }
+      if (err || !ret.success) { callback(); return output(err); }
       added[table]++;
-      console.log("Created " + table + " record id : " + ret.id);
+      if (debug > 0) { console.log("Created " + table + " record id : " + ret.id); }
       callback();
     });
   });
+}
+
+function output(text) {
+  var report = "<pre>\n" + text + "\n" +
+               "Import for date:   " + date + "\n" + "</pre>";
+  var mailOptions = {
+    from: '"Ten Oaks Tool" <noreply@tenoaksproject.org>',
+    to: process.env.REPORTTO,
+    subject: 'Re: Ten Oaks Import',
+    text: report,
+    html: report
+  };
+  transporter.sendMail(mailOptions, function(err, info) { if (err) { console.log(err); } });
 }
