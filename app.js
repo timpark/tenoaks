@@ -16,8 +16,8 @@ var conn = new sf.Connection(config);
 var yesterday = (function(d){d.setDate(d.getDate()-1); return d})(new Date);
 var date = ("0" + yesterday.getDate()).slice(-2) + '/' + ("0" + (yesterday.getMonth()+1)).slice(-2) + '/' + yesterday.getFullYear(); // 25/06/2016
 // Hackathon WARNING: Trusting the env vars to not be malicious
-var wget1 = "wget --keep-session-cookies --save-cookies cookies.txt --post-data '__VIEWSTATE=" + process.env.CH_VIEWSTATE1 + "&ctl00$bodyContentContainer$SignInControl$EmailAddress=" + process.env.CH_USERNAME + "&ctl00$bodyContentContainer$SignInControl$Password=" + process.env.CH_PASSWORD + "&ctl00$bodyContentContainer$SignInControl$btnSignIn=Sign In' https://beta.canadahelps.com/en/SignIn.aspx -O /dev/null";
-var wget2 = "wget --keep-session-cookies --load-cookies cookies.txt --post-data '__VIEWSTATE=" + process.env.CH_VIEWSTATE2 + "&ctl00$bodyContentContainer$txtFromDate=" + date + "&ctl00$bodyContentContainer$txtToDate=" + date + "&ctl00$bodyContentContainer$btnDownloadData.x=20&ctl00$bodyContentContainer$btnDownloadData.y=13' https://beta.canadahelps.com/en/Admin/MCDonations_DataDownload.aspx -O CharityDataDownload.csv";
+var wget1 = "wget --keep-session-cookies --save-cookies cookies.txt --post-data '__VIEWSTATE=" + process.env.CH_VIEWSTATE1 + "&ctl00$bodyContentContainer$SignInControl$EmailAddress=" + process.env.CH_USERNAME + "&ctl00$bodyContentContainer$SignInControl$Password=" + process.env.CH_PASSWORD + "&ctl00$bodyContentContainer$SignInControl$btnSignIn=Sign In' " + process.env.CH_URL + "/en/SignIn.aspx -O /dev/null";
+var wget2 = "wget --keep-session-cookies --load-cookies cookies.txt --post-data '__VIEWSTATE=" + process.env.CH_VIEWSTATE2 + "&ctl00$bodyContentContainer$txtFromDate=" + date + "&ctl00$bodyContentContainer$txtToDate=" + date + "&ctl00$bodyContentContainer$btnDownloadData.x=20&ctl00$bodyContentContainer$btnDownloadData.y=13' " + process.env.CH_URL + "/en/Admin/MCDonations_DataDownload.aspx -O CharityDataDownload.csv";
 
 child_process.exec(wget1, function (err, stdout, stderr) {
   if (err) { return console.err(err); }
@@ -73,14 +73,14 @@ child_process.exec(wget1, function (err, stdout, stderr) {
         });
         async.series(asyncTasks, function(){
           var report = "<pre>\n" +
-                       "Import for date:   " + date + "\n" +
                        "New Accounts:      " + added.Account + "\n" +
                        "New Contacts:      " + added.Contact + "\n" +
                        "New Opportunities: " + added.Opportunity + "\n" +
+                       "Import for date:   " + date + "\n" +
                        "</pre>";
           var mailOptions = {
             from: '"Ten Oaks Tool" <noreply@tenoaksproject.org>',
-            to: "timpark@gmail.com",
+            to: process.env.REPORTTO,
             subject: 'Re: Ten Oaks Import',
             text: report,
             html: report
