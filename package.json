@@ -1,0 +1,22 @@
+{
+  "name": "ten-oaks-tool",
+  "version": "0.0.1",
+  "description": "CanadaHelps to SalesForce data integration",
+  "private": true,
+  "main": "app.js",
+  "engines": {
+    "node": "0.12.4",
+    "npm": "2.14.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "RHOKOTT2016",
+  "license": "MIT",
+  "dependencies": {
+    "async": "^2.0.0-rc.6",
+    "csvtojson": "^1.0.0",
+    "dotenv": "^2.0.0",
+    "jsforce": "^1.6.5"
+  }
+}
