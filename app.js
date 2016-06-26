@@ -46,6 +46,7 @@ child_process.exec(wget1, function (err, stdout, stderr) {
           if (contact.Email === '') { contact.Email = 'ANON'; }
           if (contact.Email.indexOf("@") === -1) { contact.Email += '@ANON.COM'; }
           contact.Email = contact.Email.toLowerCase();
+          //contact.Account = ""; // Lookup(Account)
           contact.MailingStreet = result['DONOR ADDRESS 1'] + '\n' + result['DONOR ADDRESS 2'];
           contact.MailingCity = result['DONOR CITY'];
           contact.MailingState = result['DONOR PROVINCE/STATE'];
@@ -54,10 +55,12 @@ child_process.exec(wget1, function (err, stdout, stderr) {
 
           var opportunity = {};
           opportunity.Name = result['TRANSACTION NUMBER'];
+          //opportunity.Donor_Name__c = ""; // Lookup(Contact)
           opportunity.StageName = 'Closed Won';
           opportunity.canh__Payment_Method__c = result['PAYMENT METHOD'];
           opportunity.Amount = result['AMOUNT'];
           opportunity.CloseDate = result['DONATION DATE'];
+          opportunity.Receive_Date__c = result['DONATION DATE'];
           opportunity.canh__Fee__c = result['FEE'];
           opportunity.canh__In_Honour__c = result['IN HONOUR OF'];
           opportunity.canh__In_Memory__c = result['IN MEMORY OF'];
