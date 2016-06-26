@@ -53,7 +53,7 @@ child_process.exec(wget1, function (err, stdout, stderr) {
 
           var opportunity = {};
           opportunity.Name = result['TRANSACTION NUMBER'];
-          opportunity.StageName = 'Closed 1';
+          opportunity.StageName = 'Closed Won';
           opportunity.Type = result['PAYMENT METHOD'];
           opportunity.Amount = result['AMOUNT'];
           opportunity.CloseDate = result['DONATION DATE'];
