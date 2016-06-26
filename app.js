@@ -108,9 +108,9 @@ function output(text) {
   var report = "<pre>\n" + text + "\n" +
                "Import for date:   " + date + "\n" + "</pre>";
   var mailOptions = {
-    from: '"Ten Oaks Tool" <noreply@tenoaksproject.org>',
+    from: process.env.REPORTFROM,
     to: process.env.REPORTTO,
-    subject: 'Re: Ten Oaks Import',
+    subject: process.env.REPORTSUBJECT,
     text: report,
     html: report
   };
