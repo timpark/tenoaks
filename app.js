@@ -18,6 +18,7 @@ var added = { Account: 0, Contact: 0, Opportunity: 0 };
 
 var yesterday = (function(d){d.setDate(d.getDate()-1); return d})(new Date);
 var date = ("0" + yesterday.getDate()).slice(-2) + '/' + ("0" + (yesterday.getMonth()+1)).slice(-2) + '/' + yesterday.getFullYear(); // 25/06/2016
+//date = "25/06/2016";
 // Hackathon WARNING: Trusting the env vars to not be malicious
 var wget1 = "wget --keep-session-cookies --save-cookies cookies.txt --post-data '__VIEWSTATE=" + process.env.CH_VIEWSTATE1 + "&ctl00$bodyContentContainer$SignInControl$EmailAddress=" + process.env.CH_USERNAME + "&ctl00$bodyContentContainer$SignInControl$Password=" + process.env.CH_PASSWORD + "&ctl00$bodyContentContainer$SignInControl$btnSignIn=Sign In' " + process.env.CH_URL + "/en/SignIn.aspx -O /dev/null";
 var wget2 = "wget --keep-session-cookies --load-cookies cookies.txt --post-data '__VIEWSTATE=" + process.env.CH_VIEWSTATE2 + "&ctl00$bodyContentContainer$txtFromDate=" + date + "&ctl00$bodyContentContainer$txtToDate=" + date + "&ctl00$bodyContentContainer$btnDownloadData.x=20&ctl00$bodyContentContainer$btnDownloadData.y=13' " + process.env.CH_URL + "/en/Admin/MCDonations_DataDownload.aspx -O CharityDataDownload.csv";
@@ -32,6 +33,7 @@ child_process.exec(wget1, function (err, stdout, stderr) {
         if (err) { return output(err); }
         var asyncTasks = [];
         results.forEach(function(result) {
+          if (result['DONOR COMPANY NAME'] === undefined) { return; }
           var account = { Name:'General' };
           if ((result['DONOR COMPANY NAME'] != '') && (result['DONOR COMPANY NAME'] != 'ANON')) {
             account.Name = result['DONOR COMPANY NAME'];
@@ -75,9 +77,9 @@ child_process.exec(wget1, function (err, stdout, stderr) {
             console.log(opportunity);
           }
 
-          asyncTasks.push(function(callback) { createData("Account", "Name", account, callback); });
-          asyncTasks.push(function(callback) { createData("Contact", "Email", contact, callback); });
-          asyncTasks.push(function(callback) { createData("Opportunity", "Name", opportunity, callback); });
+          asyncTasks.push(function(callback) { createData("Account", "Name", account, callback, contact, "AccountId"); });
+          asyncTasks.push(function(callback) { createData("Contact", "Email", contact, callback, opportunity, "Donor_Name__c"); });
+          asyncTasks.push(function(callback) { createData("Opportunity", "Name", opportunity, callback, null, null); });
         });
         async.series(asyncTasks, function(){
           var text = "New Accounts:      " + added.Account + "\n" +
@@ -94,13 +96,19 @@ function capitalizeFirstLetter(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-function createData(table, unique, data, callback) {
+function createData(table, unique, data, callback, idObj, idAttribute) {
   if (debug > 0) { console.log(data[unique]); }
-  conn.query("SELECT " + unique + " FROM " + table + " WHERE " + unique + " = '" + data[unique] + "'", function(err, result) {
+  conn.query("SELECT Id FROM " + table + " WHERE " + unique + " = '" + data[unique] + "'", function(err, result) {
     if (err) { callback(); return output(err); }
-    if (result.totalSize > 0 || create === false) { callback(); return; }
+    if (result.totalSize > 0) {
+      if (idObj !== null) { idObj[idAttribute] = result.records[0].Id; }
+      callback();
+      return;
+    }
+    if (create === false) { callback(); return; }
     conn.sobject(table).create(data, function(err, ret) {
       if (err || !ret.success) { callback(); return output(err); }
+      if (idObj !== null) { idObj[idAttribute] = ret.id; }
       added[table]++;
       if (debug > 0) { console.log("Created " + table + " record id : " + ret.id); }
       callback();
