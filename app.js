@@ -9,9 +9,6 @@ var sf = require('jsforce');
 var nodemailer = require('nodemailer');
 var transporter = nodemailer.createTransport(process.env.SMTPACCT);
 
-var debug = 0; // 0 none  1 some  2 more
-var create = true; // optionally don't create data for debugging
-var email = true; // email, or stdout
 //var config = { loginUrl:process.env.SF_URL, logLevel: "DEBUG" };
 var config = { loginUrl:process.env.SF_URL };
 var conn = new sf.Connection(config);
@@ -96,7 +93,7 @@ function processData(data) {
         opportunity.Description = result['MESSAGE TO CHARITY'];
         opportunity.canh__Donation_Source__c = result['DONATION SOURCE'];
 
-        if (debug > 1) {
+        if (process.env.OPT_DEBUG > 1) {
           console.log("-----------------------");
           console.log(account);
           console.log(contact);
@@ -122,7 +119,7 @@ function capitalizeFirstLetter(string) {
 }
 
 function createData(table, unique, data, callback, idObj, idAttribute) {
-  if (debug > 0) { console.log(data[unique]); }
+  if (process.env.OPT_DEBUG > 0) { console.log(data[unique]); }
   conn.query("SELECT Id FROM " + table + " WHERE " + unique + " = '" + data[unique] + "'", function(err, result) {
     if (err) { callback(); return output(err); }
     if (result.totalSize > 0) {
@@ -130,12 +127,12 @@ function createData(table, unique, data, callback, idObj, idAttribute) {
       callback();
       return;
     }
-    if (create === false) { callback(); return; }
+    if (process.env.OPT_CREATE === 'false') { callback(); return; }
     conn.sobject(table).create(data, function(err, ret) {
       if (err || !ret.success) { callback(); return output(err); }
       if (idObj !== null) { idObj[idAttribute] = ret.id; }
       added[table]++;
-      if (debug > 0) { console.log("Created " + table + " record id : " + ret.id); }
+      if (process.env.OPT_DEBUG > 0) { console.log("Created " + table + " record id : " + ret.id); }
       callback();
     });
   });
@@ -151,7 +148,7 @@ function output(text) {
     text: report,
     html: report
   };
-  if (email === true) {
+  if (process.env.OPT_EMAIL === 'true') {
     transporter.sendMail(mailOptions, function(err, info) { if (err) { console.log(err); } });
   }
   else {
