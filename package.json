@@ -15,9 +15,11 @@
   "license": "MIT",
   "dependencies": {
     "async": "^2.0.0-rc.6",
+    "cheerio": "^0.20.0",
     "csvtojson": "^1.0.0",
     "dotenv": "^2.0.0",
     "jsforce": "^1.6.5",
-    "nodemailer": "^2.2.0"
+    "nodemailer": "^2.2.0",
+    "request": "^2.72.0"
   }
 }
