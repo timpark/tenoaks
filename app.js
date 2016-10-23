@@ -12,11 +12,19 @@ var transporter = nodemailer.createTransport(process.env.SMTPACCT);
 //var config = { loginUrl:process.env.SF_URL, logLevel: "DEBUG" };
 var config = { loginUrl:process.env.SF_URL };
 var conn = new sf.Connection(config);
-var added = { Account: 0, Contact: 0, Opportunity: 0 };
+var added = { Account: 0, Contact: 0, Opportunity: 0, Amount: 0 };
 
+// Date format: 25/06/2016
 var yesterday = (function(d){d.setDate(d.getDate()-1); return d})(new Date);
-var date = ("0" + yesterday.getDate()).slice(-2) + '/' + ("0" + (yesterday.getMonth()+1)).slice(-2) + '/' + yesterday.getFullYear(); // 25/06/2016
-//date = "25/06/2016";
+var fromDate = ("0" + yesterday.getDate()).slice(-2) + '/' + ("0" + (yesterday.getMonth()+1)).slice(-2) + '/' + yesterday.getFullYear(); // 25/06/2016
+var toDate = fromDate;
+if (process.argv.length > 3) {
+  fromDate = process.argv[2];
+  toDate = process.argv[3];
+}
+else if (process.argv.length > 2) {
+  fromDate = toDate = process.argv[2];
+}
 
 var reqOptions = [
   { method:"GET",  url:process.env.CH_URL + "/en/SignIn.aspx" },
@@ -26,8 +34,8 @@ var reqOptions = [
       'ctl00$bodyContentContainer$SignInControl$btnSignIn':'Sign In' } },
   { method:"GET",  url:process.env.CH_URL + "/en/Admin/MCDonations_DataDownload.aspx", jar:true },
   { method:"POST", url:process.env.CH_URL + "/en/Admin/MCDonations_DataDownload.aspx", jar:true, form:
-    { 'ctl00$bodyContentContainer$txtFromDate':date,
-      'ctl00$bodyContentContainer$txtToDate':date,
+    { 'ctl00$bodyContentContainer$txtFromDate':fromDate,
+      'ctl00$bodyContentContainer$txtToDate':toDate,
       'ctl00$bodyContentContainer$btnDownloadData.x':20,
       'ctl00$bodyContentContainer$btnDownloadData.y':13 } }
 ];
@@ -58,7 +66,7 @@ function processData(data) {
       results.forEach(function(result) {
         if (result['DONOR COMPANY NAME'] === undefined) { return; }
         var account = { Name:'General' };
-        if ((result['DONOR COMPANY NAME'] != '') && (result['DONOR COMPANY NAME'] != 'ANON')) {
+        if ((result['DONOR COMPANY NAME'] !== '') && (result['DONOR COMPANY NAME'] !== 'ANON')) {
           account.Name = result['DONOR COMPANY NAME'];
         }
 
@@ -105,9 +113,10 @@ function processData(data) {
         asyncTasks.push(function(callback) { createData("Opportunity", "Name", opportunity, callback, null, null); });
       });
       async.series(asyncTasks, function(){
-        var text = "New Accounts:      " + added.Account + "\n" +
-                   "New Contacts:      " + added.Contact + "\n" +
-                   "New Opportunities: " + added.Opportunity;
+        var text = "Amount:        $" + added.Amount + "\n" +
+                   "Opportunities: " + added.Opportunity + "\n" +
+                   "Contacts:      " + added.Contact + "\n" +
+                   "Accounts:      " + added.Account;
         output(text);
       });
     });
@@ -132,6 +141,7 @@ function createData(table, unique, data, callback, idObj, idAttribute) {
       if (err || !ret.success) { callback(); return output(err); }
       if (idObj !== null) { idObj[idAttribute] = ret.id; }
       added[table]++;
+      if (table === 'Opportunity') { added.Amount += parseFloat(data.Amount); }
       if (process.env.OPT_DEBUG > 0) { console.log("Created " + table + " record id : " + ret.id); }
       callback();
     });
@@ -140,7 +150,7 @@ function createData(table, unique, data, callback, idObj, idAttribute) {
 
 function output(text) {
   var report = "<pre>\n" + text + "\n" +
-               "Import for date:   " + date + "\n" + "</pre>";
+               "Import dates:  " + fromDate + " - " + toDate + "\n" + "</pre>";
   var mailOptions = {
     from: process.env.REPORTFROM,
     to: process.env.REPORTTO,
