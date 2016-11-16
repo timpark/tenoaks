@@ -5,6 +5,7 @@ var request = require('request');
 var cheerio = require('cheerio');
 var Converter = require('csvtojson').Converter;
 var converter = new Converter({});
+var sqlEscape = require('sql-escape');
 var sf = require('jsforce');
 var nodemailer = require('nodemailer');
 var transporter = nodemailer.createTransport(process.env.SMTPACCT);
@@ -129,7 +130,7 @@ function capitalizeFirstLetter(string) {
 
 function createData(table, unique, data, callback, idObj, idAttribute) {
   if (process.env.OPT_DEBUG > 0) { console.log(data[unique]); }
-  conn.query("SELECT Id FROM " + table + " WHERE " + unique + " = '" + data[unique] + "'", function(err, result) {
+  conn.query("SELECT Id FROM " + table + " WHERE " + unique + " = '" + sqlEscape(data[unique]) + "'", function(err, result) {
     if (err) { callback(); return output(err); }
     if (result.totalSize > 0) {
       if (idObj !== null) { idObj[idAttribute] = result.records[0].Id; }

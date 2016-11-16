@@ -20,6 +20,7 @@
     "dotenv": "^2.0.0",
     "jsforce": "^1.6.5",
     "nodemailer": "^2.2.0",
-    "request": "^2.72.0"
+    "request": "^2.72.0",
+    "sql-escape": "^1.0.1"
   }
 }
