@@ -3,8 +3,7 @@ var fs = require('fs');
 var async = require('async');
 var request = require('request');
 var cheerio = require('cheerio');
-var Converter = require('csvtojson').Converter;
-var converter = new Converter({});
+var csv = require('csvtojson');
 var sqlEscape = require('sql-escape');
 var sf = require('jsforce');
 var nodemailer = require('nodemailer');
@@ -58,9 +57,21 @@ q.drain = function() { processData(data); }
 
 for (var i in reqOptions) { q.push(reqOptions[i]); }
 
+// Braindead decoder that assumes fully valid input
+function decodeUTF16LE(binaryStr) {
+  var cp = [];
+  for(var i = 0; i < binaryStr.length; i += 2)
+    if ((binaryStr.charCodeAt(i) > 0) && (binaryStr.charCodeAt(i) < 255))
+      cp.push(binaryStr.charCodeAt(i));
+    //cp.push(binaryStr.charCodeAt(i) | (binaryStr.charCodeAt(i+1) << 8));
+  return String.fromCharCode.apply(String, cp);
+}
+
 function processData(data) {
-  converter.fromString(data, function(err, results) {
-    if (err) { return output(err); }
+  if ((data.length >= 2) && (data.charCodeAt(1) == 0))
+    data = decodeUTF16LE(data);
+  csv().fromString(data).on('end_parsed', function(results) {
+    //if (err) { return output(err); }
     conn.login(process.env.SF_USERNAME, process.env.SF_PASSWORD + process.env.SF_ACCESS_TOKEN, function(err, user) {
       if (err) { return output(err); }
       var asyncTasks = [];
@@ -68,7 +79,7 @@ function processData(data) {
         if (result['DONOR COMPANY NAME'] === undefined) { return; }
         var account = { Name:'General' };
         if ((result['DONOR COMPANY NAME'] !== '') && (result['DONOR COMPANY NAME'] !== 'ANON')) {
-          account.Name = result['DONOR COMPANY NAME'];
+          account.Name = String(result['DONOR COMPANY NAME']);
         }
 
         var contact = {};
@@ -96,8 +107,8 @@ function processData(data) {
         opportunity.CloseDate = result['DONATION DATE'];
         opportunity.Receive_Date__c = result['DONATION DATE'];
         opportunity.canh__Fee__c = result['FEE'];
-        opportunity.canh__In_Honour__c = result['IN HONOUR OF'];
-        opportunity.canh__In_Memory__c = result['IN MEMORY OF'];
+        opportunity.canh__In_Honour__c = (result['IN HONOUR OF'].toLowerCase() == 'true');
+        opportunity.canh__In_Memory__c = (result['IN MEMORY OF'].toLowerCase() == 'true');
         opportunity.canh__Honouree__c = result['HONOUREE'];
         opportunity.Description = result['MESSAGE TO CHARITY'];
         opportunity.canh__Donation_Source__c = result['DONATION SOURCE'];
